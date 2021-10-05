@@ -19,6 +19,7 @@ boxstats = [[UR_names, SR_names, R_names, N_names], [UR_count, SR_count, R_count
 rarities = ["UR", "SR", "R", "N"]
 extras = [boxstats[1][i] - (math.floor(boxstats[1][i] / boxstats[0][i]) * boxstats[0][i])
           for i in range(len(boxstats[0]))]
+indices = []
 
 class box():
     def __init__(self):
@@ -64,6 +65,8 @@ def pull_for_card(box: box, rarity: str, extra: bool=False, copies: int=1):
         index = random.randint(extras[rarities.index(rarity)], boxstats[0][rarities.index(rarity)] - 1)
     else:
         index = random.randint(0, extras[rarities.index(rarity)] - 1)
+    indices.append(index)
+    #now pull until we find a copy of the card we chose
     while True:
         pack = box.pull_pack()
         packs_opened += 1
@@ -75,12 +78,14 @@ def pull_for_card(box: box, rarity: str, extra: bool=False, copies: int=1):
 
 newbox = box()
 trials = []
+#set the parameters for how many trials and what card we're looking for
 for i in range(10000):
     trials.append(pull_for_card(newbox, "UR"))
     newbox.reset()
 
+
 fig, ax = plt.subplots(tight_layout=True)
-hist = ax.hist(trials, bins=packs_in_box //2)
+hist = ax.hist(trials, bins=range(1,packs_in_box+1))
 plt.show()
 #[print(card.rarity,',', card.index,',', card.extra) for card in newbox.list]
 #print(pull_for_card(newbox, "N"))
