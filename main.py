@@ -33,7 +33,7 @@ extras = [boxstats[1][i] - (math.floor(boxstats[1][i] / boxstats[0][i]) * boxsta
 #this is basically for debugging purposes
 indices = []
 
-class box():
+class box:
     def __init__(self):
         self.packs = packs_in_box
         self.list = []
@@ -97,7 +97,7 @@ class box():
     def reset(self):
         self.__init__()
 
-class card():
+class card:
     def __init__(self, rarity: str, index: int, extra: bool):
         self.rarity = rarity
         self.index = index
@@ -181,7 +181,7 @@ if logging:
                                     copies=desired_copies, outfile="logs/trial" + str(i) + ".txt"))
         newbox.reset()
 else:
-    for i in range(1000):
+    for i in range(10000):
         trials.append(pull_for_card(newbox, desired_rarity, extra=desired_extra,
                                     copies=desired_copies))
         newbox.reset()
