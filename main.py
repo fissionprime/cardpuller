@@ -5,13 +5,14 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as lines
 from scipy.special import comb
 import numpy as np
-import json
 
 #info on desired cards
-desired_rarity = 'N'
+desired_rarity = 'R'
 desired_copies = 3
 #does the desired card have extra copies in the box?
 desired_extra = False
+#set logging to True if you want each simulated box pull recorded to a txt file
+logging = True
 
 #some info about the box contents
 packs_in_box = 180
@@ -36,6 +37,8 @@ class box():
     def __init__(self):
         self.packs = packs_in_box
         self.list = []
+        #the number of packs with 2 R+ cards plus the number with 2 N cards
+        #is equal to the total number of packs in the box
         self.doublerares = sum(boxstats[1][:3]) - packs_in_box
         self.doublecommons = packs_in_box - self.doublerares
         for i, count in enumerate(boxstats[1]):
@@ -58,31 +61,13 @@ class box():
         if not foundcard:
             print("failed to find card 1 to add to pack")
             [print(card.rarity, ',', card.index, ',', card.extra) for card in self.list]
-            exit()
         foundcard = False
         for i, card in enumerate(self.list):
             if card.rarity in ["N", "R"]:
                 if card.rarity == 'R':
                     #check if we still have extra R+ cards
                     if not self.doublerares:
-                        # print("rejecting double rare pack")
-                        # Ns = 0
-                        # Rs = 1
-                        # SRs = 0
-                        # URs = 0
-                        # for card in self.list[i+1:]:
-                        #     if card.rarity == 'N':
-                        #         Ns += 1
-                        #     elif card.rarity == 'R':
-                        #         Rs += 1
-                        #     elif card.rarity == 'SR':
-                        #         SRs += 1
-                        #     else:
-                        #         URs += 1
-                        # print("cards remaining", Ns, Rs, SRs, URs)
-                        # print("packs remaining", self.packs)
-                        #[print(card.rarity, ',', card.index, ',', card.extra) for card in pack]
-                        #[print(card.rarity, ',', card.index, ',', card.extra) for card in self.list]
+                        #if there aren't enough R cards left, prevent this pack from containing more than 1
                         continue
                     self.doublerares -= 1
                 else:
@@ -95,7 +80,6 @@ class box():
         if not foundcard:
             print("failed to find card 2 to add to pack")
             [print(card.rarity, ',', card.index, ',', card.extra) for card in self.list]
-            exit()
         foundcard = False
         for i, card in enumerate(self.list):
             if card.rarity in ["R", "SR", "UR"]:
@@ -105,15 +89,12 @@ class box():
         if not foundcard:
             print("failed to find card 3 to add to pack")
             [print(card.rarity, ',', card.index, ',', card.extra) for card in self.list]
-            exit()
         foundcard = False
         if len(pack) < 3:
-            print("pack has less than 3 cards. Exiting")
-            exit()
+            print("Something went wrong. Pack has less than 3 cards.")
         return pack
 
     def reset(self):
-        #print("reset the box")
         self.__init__()
 
 class card():
@@ -122,7 +103,7 @@ class card():
         self.index = index
         self.extra = extra
 
-def pull_for_card(box: box, rarity: str, extra: bool=False, copies: int=1):
+def pull_for_card(box: box, rarity: str, extra: bool=False, copies: int=1, outfile=None):
     #randomly pick a card that fits the specifications
     packs_opened = 0
     index = None
@@ -141,31 +122,21 @@ def pull_for_card(box: box, rarity: str, extra: bool=False, copies: int=1):
             packinfo.append({"rarity": card.rarity, "index": card.index})
             if card.rarity == rarity and card.index == index:
                 copies -= 1
-                if copies == 0:
-                    cardspulled.append(packinfo)
-                    return packs_opened
+        if copies <= 0:
+            cardspulled.append(packinfo)
+            break
+            #return packs_opened
         cardspulled.append(packinfo)
-        # with open('logs/packlog.txt', "w") as file:
-        #     for pack in cardspulled:
-        #         if pack[1]['rarity'] == "R":
-        #             file.write(str(pack) + "double rare\n")
-        #         else:
-        #             file.write(str(pack) + "\n")
-        #
-        #     file.write("remaining packs: " + str(len(box.list) / 3) +"\n")
-        #     remainingrarities = [0, 0, 0, 0]
-        #     for card in box.list:
-        #         if card.rarity == "N":
-        #             remainingrarities[0] += 1
-        #         elif card.rarity == "R":
-        #             remainingrarities[1] += 1
-        #         elif card.rarity == "SR":
-        #             remainingrarities[2] += 1
-        #         else: #card is UR
-        #             remainingrarities[3] += 1
-        #     file.write(str(remainingrarities) + "\n")
-        #     remaining = [str(card.rarity) + ', ' + str(card.index)+ ', '+ str(card.extra) for card in box.list]
-        #     file.write("\n".join(str(line) for line in remaining))
+    #log the results of the box pull to a file
+    if outfile:
+        with open(outfile, "w") as file:
+            for pack in cardspulled:
+                file.write(str(pack) + "\n")
+
+            file.write("remaining packs: %i\n" % (len(box.list) / 3))
+            remaining = [str(card.rarity) + ', ' + str(card.index)+ ', '+ str(card.extra) for card in box.list]
+            file.write("\n".join(str(line) for line in remaining))
+    return packs_opened
 
 #define some functions to calculate hypergeometric probabilities
 def hypergeom_pmf(N, A, n, x):
@@ -204,9 +175,16 @@ newbox = box()
 trials = []
 #set the parameters for how many trials and what card we're looking for
 #then simulate pulling for the card a lot of times
-for i in range(1000):
-    trials.append(pull_for_card(newbox, desired_rarity, extra=desired_extra, copies=desired_copies))
-    newbox.reset()
+if logging:
+    for i in range(1000):
+        trials.append(pull_for_card(newbox, desired_rarity, extra=desired_extra,
+                                    copies=desired_copies, outfile="logs/trial" + str(i) + ".txt"))
+        newbox.reset()
+else:
+    for i in range(1000):
+        trials.append(pull_for_card(newbox, desired_rarity, extra=desired_extra,
+                                    copies=desired_copies))
+        newbox.reset()
 
 #now calculate the theoretical probability distribution (ignoring pack logic)
 theoretical = []
