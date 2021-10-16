@@ -7,10 +7,10 @@ from scipy.special import comb
 import numpy as np
 
 #info on desired cards
-desired_rarity = 'R'
-desired_copies = 3
+desired_rarity = 'N'
+desired_copies = 9
 #does the desired card have extra copies in the box?
-desired_extra = False
+desired_extra = True
 #set logging to True if you want each simulated box pull recorded to a txt file
 logging = True
 
@@ -41,6 +41,7 @@ class box:
         #is equal to the total number of packs in the box
         self.doublerares = sum(boxstats[1][:3]) - packs_in_box
         self.doublecommons = packs_in_box - self.doublerares
+        self.thirdpackrares = R_count - self.doublerares
         for i, count in enumerate(boxstats[1]):
             while count:
                 for index in range(0, boxstats[0][i]):
@@ -49,7 +50,9 @@ class box:
                     self.list.append(card(rarities[i], index,(index < extras[i])))
                     count -= 1
         random.shuffle(self.list)
-    def pull_pack(self):
+    def pull_pack(self, iteration):
+        if not self.packs:
+            raise ValueError("quantity cannot be more copies than are contained in the box")
         self.packs -= 1
         pack = []
         foundcard = False
@@ -83,6 +86,10 @@ class box:
         foundcard = False
         for i, card in enumerate(self.list):
             if card.rarity in ["R", "SR", "UR"]:
+                if card.rarity == 'R':
+                    if not self.thirdpackrares:
+                        continue
+                    self.thirdpackrares -= 1
                 foundcard = True
                 pack.append(self.list.pop(i))
                 break
@@ -92,6 +99,7 @@ class box:
         foundcard = False
         if len(pack) < 3:
             print("Something went wrong. Pack has less than 3 cards.")
+            print("We are in trial %s" % iteration)
         return pack
 
     def reset(self):
@@ -103,7 +111,7 @@ class card:
         self.index = index
         self.extra = extra
 
-def pull_for_card(box: box, rarity: str, extra: bool=False, copies: int=1, outfile=None):
+def pull_for_card(box: box, rarity: str,iteration: int, extra: bool=False, copies: int=1, outfile=None):
     #randomly pick a card that fits the specifications
     packs_opened = 0
     index = None
@@ -115,7 +123,7 @@ def pull_for_card(box: box, rarity: str, extra: bool=False, copies: int=1, outfi
     #now pull until we find a copy of the card we chose
     cardspulled = []
     while True:
-        pack = box.pull_pack()
+        pack = box.pull_pack(iteration)
         packinfo = []
         packs_opened += 1
         for card in pack:
@@ -131,7 +139,10 @@ def pull_for_card(box: box, rarity: str, extra: bool=False, copies: int=1, outfi
     if outfile:
         with open(outfile, "w") as file:
             for pack in cardspulled:
-                file.write(str(pack) + "\n")
+                if pack[1]['rarity'] == 'R':
+                    file.write(str(pack) + " double rare \n")
+                else:
+                    file.write(str(pack) + "\n")
 
             file.write("remaining packs: %i\n" % (len(box.list) / 3))
             remaining = [str(card.rarity) + ', ' + str(card.index)+ ', '+ str(card.extra) for card in box.list]
@@ -177,11 +188,11 @@ trials = []
 #then simulate pulling for the card a lot of times
 for i in range(10000):
     if logging:
-        trials.append(pull_for_card(newbox, desired_rarity, extra=desired_extra,
+        trials.append(pull_for_card(newbox, desired_rarity, i, extra=desired_extra,
                                     copies=desired_copies, outfile="logs/trial" + str(i) + ".txt"))
         newbox.reset()
     else:
-        trials.append(pull_for_card(newbox, desired_rarity, extra=desired_extra,
+        trials.append(pull_for_card(newbox, desired_rarity, i, extra=desired_extra,
                                     copies=desired_copies))
         newbox.reset()
 
