@@ -209,6 +209,9 @@ for i in range(1, packs_in_box+1):
 
 desired_rarity = rarities[desired_rarity]
 
+#TODO: theoretical probability density function for histogram. Figure out if spike on last pack makes sense
+# also maybe remove iteration tracker
+
 fig, ax = plt.subplots(1, 2,sharex=True, tight_layout=True)
 fig.suptitle("Pulling for {0} Copies of {1} Card (Extra = {2})".format(desired_copies,
                                                                        desired_rarity, desired_extra))
