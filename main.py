@@ -175,13 +175,12 @@ newbox = box()
 trials = []
 #set the parameters for how many trials and what card we're looking for
 #then simulate pulling for the card a lot of times
-if logging:
-    for i in range(1000):
+for i in range(10000):
+    if logging:
         trials.append(pull_for_card(newbox, desired_rarity, extra=desired_extra,
                                     copies=desired_copies, outfile="logs/trial" + str(i) + ".txt"))
         newbox.reset()
-else:
-    for i in range(10000):
+    else:
         trials.append(pull_for_card(newbox, desired_rarity, extra=desired_extra,
                                     copies=desired_copies))
         newbox.reset()
@@ -197,14 +196,20 @@ else:
 for i in range(1, packs_in_box+1):
     theoretical.append(hypergeom_cdf(packs_in_box*3, numcards, i*3, numcards, desired_copies))
 
+desired_rarity = rarities[desired_rarity]
 
 fig, ax = plt.subplots(1, 2,sharex=True, tight_layout=True)
+fig.suptitle("Pulling for {0} Copies of {1} Card (Extra = {2})".format(desired_copies,
+                                                                       desired_rarity, desired_extra))
 hist, bins, patches = ax[0].hist(trials, bins=range(1,packs_in_box+1), density=True)
 cumulative, bins2, patches2 = ax[1].hist(trials, bins=bins,
                                        cumulative=True, density=True, histtype='step',
                                          label='Simulated')
 ax[1].plot(bins, theoretical, 'k--', label='Theoretical')
 ax[1].add_artist(lines.Line2D([0,180], [0.5, 0.5], c='red'))
+ax[1].legend(loc='lower right')
+ax[1].set_title("Chance After N Packs")
+ax[0].set_title("Chance of Finding Card in Pack N")
 plt.xlim([0,180])
 plt.show()
 #[print(card.rarity,',', card.index,',', card.extra) for card in newbox.list]
