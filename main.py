@@ -7,10 +7,10 @@ from scipy.special import comb
 import numpy as np
 
 #info on desired cards
-desired_rarity = 'N'
-desired_copies = 9
+desired_rarity = 'SR'
+desired_copies = 2
 #does the desired card have extra copies in the box?
-desired_extra = True
+desired_extra = False
 #set logging to True if you want each simulated box pull recorded to a txt file
 logging = True
 
@@ -174,7 +174,7 @@ def hypergeom_cdf(N, A, n, t, min_value=None):
     :param N: population size
     :param A: total number of desired items in N
     :param n: number of draws made from N
-    :param t: number of desired items in our draw of n items up to t
+    :param t: max number of desired items in our draw of n items up to t
     :returns: CDF computed up to t
     '''
     if min_value:
@@ -197,7 +197,8 @@ for i in range(10000):
         newbox.reset()
 
 #now calculate the theoretical probability distribution (ignoring pack logic)
-theoretical = []
+theoreticalcdf = []
+theoreticalpmf = []
 desired_rarity = rarities.index(desired_rarity)
 numcards = boxstats[1][desired_rarity] / boxstats[0][desired_rarity]
 if desired_extra:
@@ -205,21 +206,24 @@ if desired_extra:
 else:
     numcards = math.floor(numcards)
 for i in range(1, packs_in_box+1):
-    theoretical.append(hypergeom_cdf(packs_in_box*3, numcards, i*3, numcards, desired_copies))
+    theoreticalcdf.append(hypergeom_cdf(packs_in_box*3, numcards, i*3, numcards, desired_copies))
+    if i == 1:
+        theoreticalpmf.append(theoreticalcdf[0])
+        continue
+    theoreticalpmf.append(theoreticalcdf[-1] - theoreticalcdf[-2])
 
 desired_rarity = rarities[desired_rarity]
 
-#TODO: theoretical probability density function for histogram. Figure out if spike on last pack makes sense
-# also maybe remove iteration tracker
 
 fig, ax = plt.subplots(1, 2,sharex=True, tight_layout=True)
 fig.suptitle("Pulling for {0} Copies of {1} Card (Extra = {2})".format(desired_copies,
                                                                        desired_rarity, desired_extra))
-hist, bins, patches = ax[0].hist(trials, bins=range(1,packs_in_box+1), density=True)
+hist, bins, patches = ax[0].hist(trials, bins=range(1,packs_in_box+2), density=True)
 cumulative, bins2, patches2 = ax[1].hist(trials, bins=bins,
                                        cumulative=True, density=True, histtype='step',
                                          label='Simulated')
-ax[1].plot(bins, theoretical, 'k--', label='Theoretical')
+ax[1].plot(bins[:-1], theoreticalcdf, 'k--', label='Theoretical')
+ax[0].plot(bins[:-1], theoreticalpmf, 'k--', label='Theoretical')
 ax[1].add_artist(lines.Line2D([0,180], [0.5, 0.5], c='red'))
 ax[1].legend(loc='lower right')
 ax[1].set_title("Chance After N Packs")
