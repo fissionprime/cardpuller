@@ -8,11 +8,13 @@ import numpy as np
 
 #info on desired cards
 desired_rarity = 'SR'
-desired_copies = 2
+desired_copies = 1
 #does the desired card have extra copies in the box?
 desired_extra = False
 #set logging to True if you want each simulated box pull recorded to a txt file
-logging = True
+logging = False
+#number of simulations you want to run
+numtrials = 1000
 
 #some info about the box contents
 packs_in_box = 180
@@ -182,19 +184,22 @@ def hypergeom_cdf(N, A, n, t, min_value=None):
 
     return np.sum([hypergeom_pmf(N, A, n, x) for x in range(t + 1)])
 
-newbox = box()
-trials = []
-#set the parameters for how many trials and what card we're looking for
-#then simulate pulling for the card a lot of times
-for i in range(10000):
-    if logging:
-        trials.append(pull_for_card(newbox, desired_rarity, i, extra=desired_extra,
-                                    copies=desired_copies, outfile="logs/trial" + str(i) + ".txt"))
-        newbox.reset()
-    else:
-        trials.append(pull_for_card(newbox, desired_rarity, i, extra=desired_extra,
-                                    copies=desired_copies))
-        newbox.reset()
+def runsim():
+    newbox = box()
+    trials = []
+    #set the parameters for how many trials and what card we're looking for
+    #then simulate pulling for the card a lot of times
+    for i in range(numtrials):
+        if logging:
+            trials.append(pull_for_card(newbox, desired_rarity, i, extra=desired_extra,
+                                        copies=desired_copies, outfile="logs/trial" + str(i) + ".txt"))
+            newbox.reset()
+        else:
+            trials.append(pull_for_card(newbox, desired_rarity, i, extra=desired_extra,
+                                        copies=desired_copies))
+            newbox.reset()
+    return trials
+
 
 #now calculate the theoretical probability distribution (ignoring pack logic)
 theoreticalcdf = []
@@ -214,20 +219,46 @@ for i in range(1, packs_in_box+1):
 
 desired_rarity = rarities[desired_rarity]
 
-
-fig, ax = plt.subplots(1, 2,sharex=True, tight_layout=True)
+trials = runsim()
+fig, ax = plt.subplots(2, 2,sharex=True, tight_layout=True)
 fig.suptitle("Pulling for {0} Copies of {1} Card (Extra = {2})".format(desired_copies,
                                                                        desired_rarity, desired_extra))
-hist, bins, patches = ax[0].hist(trials, bins=range(1,packs_in_box+2), density=True)
-cumulative, bins2, patches2 = ax[1].hist(trials, bins=bins,
+hist, bins, patches = ax[0][0].hist(trials, bins=range(1,packs_in_box+2), density=True)
+
+
+cumulative, bins2, patches2 = ax[0][1].hist(trials, bins=bins,
                                        cumulative=True, density=True, histtype='step',
                                          label='Simulated')
-ax[1].plot(bins[:-1], theoreticalcdf, 'k--', label='Theoretical')
-ax[0].plot(bins[:-1], theoreticalpmf, 'k--', label='Theoretical')
-ax[1].add_artist(lines.Line2D([0,180], [0.5, 0.5], c='red'))
-ax[1].legend(loc='lower right')
-ax[1].set_title("Chance After N Packs")
-ax[0].set_title("Chance of Finding Card in Pack N")
+ax[1][0].plot(bins[:-1], cumulative - theoreticalcdf)
+
+systematic = None
+howmany = 15
+for i in range(howmany):
+    trials = runsim()
+    cumulative, bins2, patches2 = ax[0][1].hist(trials, bins=bins,
+                                                cumulative=True, density=True, histtype='step',
+                                                label=i)
+    try:
+        if not systematic:
+            systematic = cumulative - theoreticalcdf
+        else:
+            systematic += cumulative - theoreticalcdf
+    except ValueError:
+        if not list(systematic):
+            systematic = cumulative - theoreticalcdf
+        else:
+            systematic += cumulative - theoreticalcdf
+    ax[1][0].plot(bins[:-1], cumulative - theoreticalcdf, label=i)
+ax[1][1].plot(bins[:-1], systematic / howmany)
+
+ax[0][1].plot(bins[:-1], theoreticalcdf, 'k--', label='Theoretical')
+ax[0][0].plot(bins[:-1], theoreticalpmf, 'k--', label='Theoretical')
+ax[0][1].add_artist(lines.Line2D([0,180], [0.5, 0.5], c='red'))
+#= ax[0][1].legend(loc='lower right')
+ax[0][1].set_title("Chance After N Packs")
+ax[0][0].set_title("Chance of Finding Card in Pack N")
+ax[1][0].set_title("Simulated Minus Theoretical ({0} Iterations)".format(howmany))
+ax[1][1].set_title("Average Simulated Minus Theoretical")
 plt.xlim([0,180])
 plt.show()
 #[print(card.rarity,',', card.index,',', card.extra) for card in newbox.list]
