@@ -7,8 +7,8 @@ from scipy.special import comb
 import numpy as np
 
 #info on desired cards
-desired_rarity = 'SR'
-desired_copies = 1
+desired_rarity = 'N'
+desired_copies = 3
 #does the desired card have extra copies in the box?
 desired_extra = False
 #set logging to True if you want each simulated box pull recorded to a txt file
@@ -104,6 +104,16 @@ class box:
             print("We are in trial %s" % iteration)
         return pack
 
+    def pull_pack2(self):
+        #alternative implementation that ignores pack logic for testing purposes
+        if not self.packs:
+            raise ValueError("quantity cannot be more copies than are contained in the box")
+        self.packs -= 1
+        pack = []
+        for i in range(3):
+            pack.append(self.list.pop())
+        return pack
+
     def reset(self):
         self.__init__()
 
@@ -125,7 +135,8 @@ def pull_for_card(box: box, rarity: str,iteration: int, extra: bool=False, copie
     #now pull until we find a copy of the card we chose
     cardspulled = []
     while True:
-        pack = box.pull_pack(iteration)
+        #pack = box.pull_pack(iteration)
+        pack = box.pull_pack2()
         packinfo = []
         packs_opened += 1
         for card in pack:
@@ -231,30 +242,36 @@ cumulative, bins2, patches2 = ax[0][1].hist(trials, bins=bins,
                                          label='Simulated')
 ax[1][0].plot(bins[:-1], cumulative - theoreticalcdf)
 
-systematic = None
-howmany = 15
+differences = []
+howmany = 5
 for i in range(howmany):
     trials = runsim()
     cumulative, bins2, patches2 = ax[0][1].hist(trials, bins=bins,
                                                 cumulative=True, density=True, histtype='step',
                                                 label=i)
-    try:
-        if not systematic:
-            systematic = cumulative - theoreticalcdf
-        else:
-            systematic += cumulative - theoreticalcdf
-    except ValueError:
-        if not list(systematic):
-            systematic = cumulative - theoreticalcdf
-        else:
-            systematic += cumulative - theoreticalcdf
+
+    differences.append(cumulative - theoreticalcdf)
+
     ax[1][0].plot(bins[:-1], cumulative - theoreticalcdf, label=i)
-ax[1][1].plot(bins[:-1], systematic / howmany)
+
+totaldifferences = [sum(i) for i in differences]
+outlierhigh = totaldifferences.index(max(totaldifferences))
+outlierlow = totaldifferences.index(min(totaldifferences))
+averagedifference = sum(differences[:])
+removedoutliers = averagedifference - (differences[outlierhigh] + differences[outlierlow])
+
+ax[1][1].plot(bins[:-1], averagedifference / howmany, label='Outliers included')
+ax[1][1].plot(bins[:-1], removedoutliers / (howmany - 2), label='Outliers excluded')
+average = sum(averagedifference) / (packs_in_box * howmany)
+averagenooutliers = sum(removedoutliers) / (packs_in_box * (howmany - 2))
+ax[1][1].plot([average] * packs_in_box, linestyle='--', label='Average')
+ax[1][1].plot([averagenooutliers] * packs_in_box, linestyle='--', label='Average (outliers removed)')
+ax[1][1].legend(loc='lower right')
 
 ax[0][1].plot(bins[:-1], theoreticalcdf, 'k--', label='Theoretical')
 ax[0][0].plot(bins[:-1], theoreticalpmf, 'k--', label='Theoretical')
-ax[0][1].add_artist(lines.Line2D([0,180], [0.5, 0.5], c='red'))
-#= ax[0][1].legend(loc='lower right')
+ax[0][1].add_artist(lines.Line2D([0,packs_in_box], [0.5, 0.5], c='red'))
+#ax[0][1].legend(loc='lower right')
 ax[0][1].set_title("Chance After N Packs")
 ax[0][0].set_title("Chance of Finding Card in Pack N")
 ax[1][0].set_title("Simulated Minus Theoretical ({0} Iterations)".format(howmany))
