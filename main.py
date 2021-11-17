@@ -9,12 +9,12 @@ from scipy.stats import multivariate_hypergeom
 from functools import reduce
 
 # info on desired cards
-targets = [{'rarity': 'SR', 'copies': 2}, {'rarity': 'UR', 'copies': 1},
+targets = [{'rarity': 'SR', 'copies': 1}, {'rarity': 'SR', 'copies': 1},
            {'rarity': 'UR', 'copies': 1}, {'rarity': 'N', 'copies': 3, 'extra': True}]
-#desired_rarity = 'SR'
-#desired_copies = 2
+# desired_rarity = 'SR'
+# desired_copies = 2
 # does the desired card have extra copies in the box?
-#desired_extra = False
+# desired_extra = False
 # set logging to True if you want each simulated box pull recorded to a txt file
 logging = False
 # number of simulations you want to run
@@ -56,7 +56,7 @@ def pick_target_cards():
     indices = [[[]] * 4 for i in range(2)]
     for i, extraornah in enumerate(indices):
         for j, rarity in enumerate(extraornah):
-            indices[i][j] = random.choices(cardpool[i][j], k=howmanydistinct[i][j])
+            indices[i][j] = random.sample(cardpool[i][j], k=howmanydistinct[i][j])
 
     for card in targets:
         extra = card.get('extra', False)
@@ -64,6 +64,11 @@ def pick_target_cards():
             card['index'] = indices[0][rarities.index(card['rarity'])].pop()
         else:
             card['index'] = indices[1][rarities.index(card['rarity'])].pop()
+
+
+# helper function to sort dictionary by value
+def by_value(item):
+    return item[1]
 
 
 class box:
@@ -75,14 +80,22 @@ class box:
         self.double_rares = sum(boxstats[1][:3]) - packs_in_box
         self.double_commons = packs_in_box - self.double_rares
         self.third_pack_rares = R_count - self.double_rares
+        self.card_dict = {
+            i: {} for i in rarities
+        }
         for i, count in enumerate(boxstats[1]):
             while count:
                 for index in range(0, boxstats[0][i]):
                     if not count:
                         break
                     self.list.append(card(rarities[i], index, (index < extras[i])))
+                    if self.card_dict[rarities[i]].get(index, False):
+                        self.card_dict[rarities[i]][index] += 1
+                    else:
+                        self.card_dict[rarities[i]][index] = 1
                     count -= 1
         random.shuffle(self.list)
+        self.max_copies = max([max(list(self.card_dict.values())[i].values()) for i in range(len(self.card_dict))])
 
     def pull_pack(self):
         if not self.packs:
@@ -90,18 +103,49 @@ class box:
         self.packs -= 1
         pack = []
         foundcard = False
+        mandatory_N = None
+        if self.packs < self.max_copies:
+            N_most_copies = sorted(self.card_dict['N'].items(), key=by_value, reverse=True)[0]
+            if N_most_copies[1] > self.packs:
+                mandatory_N = N_most_copies[0]
+                # print(self.packs,mandatory_N, N_most_copies[1])
+                # print(self.card_dict['N'])
         for i, card in enumerate(self.list):
             if card.rarity == "N":
+                # if we must include a specific N card check if we found it
+                if mandatory_N or mandatory_N == 0:
+                    if card.index != mandatory_N:
+                        continue
                 foundcard = True
+                self.card_dict[card.rarity][card.index] -= 1
                 pack.append(self.list.pop(i))
                 break
         if not foundcard:
             print("failed to find card 1 to add to pack")
             [print(card.rarity, ',', card.index, ',', card.extra) for card in self.list]
         foundcard = False
+        mandatory_N = None
+        mandatory_R = None
+        if self.packs < self.max_copies:
+            N_most_copies = sorted(self.card_dict['N'].items(), key=by_value, reverse=True)[0]
+            # only force include a specific R card in slot 2 if there are two R cards
+            # with # copies greater than # packs since a single mandatory R card just goes to slot 3
+            R_most_copies = sorted(self.card_dict['R'].items(), key=by_value, reverse=True)[1]
+            if N_most_copies[1] > self.packs:
+                mandatory_N = N_most_copies[0]
+            if R_most_copies[1] > self.packs:
+                mandatory_R = R_most_copies[0]
+        # if self.packs == 1:
+        #     print(self.card_dict)
         for i, card in enumerate(self.list):
             if card.rarity in ["N", "R"]:
+                if mandatory_N or mandatory_N == 0:
+                    if card.index != mandatory_N or card.rarity != 'N':
+                        continue
                 if card.rarity == 'R':
+                    if mandatory_R or mandatory_R == 0:
+                        if card.index != mandatory_R or card.rarity != 'R':
+                            continue
                     # check if we still have extra R+ cards
                     if not self.double_rares:
                         # if there aren't enough R cards left, prevent this pack from containing more than 1
@@ -110,27 +154,49 @@ class box:
                 else:
                     if not self.double_commons:
                         continue
+                    # make sure we aren't doubling up the same card in a pack
+                    if card.index == pack[0].index:
+                        continue
                     self.double_commons -= 1
                 foundcard = True
+                self.card_dict[card.rarity][card.index] -= 1
                 pack.append(self.list.pop(i))
                 break
         if not foundcard:
             print("failed to find card 2 to add to pack")
+            print(self.packs)
             [print(card.rarity, ',', card.index, ',', card.extra) for card in self.list]
         foundcard = False
+        mandatory_R = None
+        if self.packs < self.max_copies:
+            R_most_copies = sorted(self.card_dict['R'].items(), key=by_value, reverse=True)[0]
+            if R_most_copies[1] > self.packs:
+                mandatory_R = R_most_copies[0]
         for i, card in enumerate(self.list):
             if card.rarity in ["R", "SR", "UR"]:
+                if mandatory_R or mandatory_R == 0:
+                    if card.index != mandatory_R or card.rarity != 'R':
+                        continue
                 if card.rarity == 'R':
                     if not self.third_pack_rares:
                         continue
+                    # check if card is a duplicate from earlier in the pack
+                    try:
+                        if card.index == pack[1].index and card.rarity == pack[1].rarity:
+                            continue
+                    except IndexError:
+                        break
                     self.third_pack_rares -= 1
                 foundcard = True
+                self.card_dict[card.rarity][card.index] -= 1
                 pack.append(self.list.pop(i))
                 break
         if not foundcard:
             print("failed to find card 3 to add to pack")
             [print(card.rarity, ',', card.index, ',', card.extra) for card in self.list]
         foundcard = False
+        if len(pack) < 3:
+            print("Something went wrong. Pack has less than 3 cards.")
         return pack
 
     def pull_pack2(self):
@@ -174,7 +240,6 @@ def pull_for_cards(box: box, targets, outfile=None):
         for card in pack:
             for target in targets:
                 if card['rarity'] == target['rarity'] and card['index'] == target['index']:
-                    #print('found a card')
                     if not target.get('found', False):
                         target['found'] = 1
                     else:
@@ -270,40 +335,39 @@ for card in targets:
                                  / boxstats[0][rarities.index(card['rarity'])]))
     else:
         maxgoal.append(math.floor(boxstats[1][rarities.index(card['rarity'])]
-                                 / boxstats[0][rarities.index(card['rarity'])]))
+                                  / boxstats[0][rarities.index(card['rarity'])]))
 othercards = (packs_in_box * 3) - sum(maxgoal)
 maxgoal.append(othercards)
 
-pdf = []
+cdf = []
 permutations = []
 # here we calculate all the permutations in which we have found our target cards in desired quantities
 ranges = [[mingoal[i], maxgoal[i] + 1] for i in range(len(mingoal))]
-operations=reduce(lambda a, b: a*b,(p[1]-p[0] for p in ranges))-1
-result=[i[0] for i in ranges]
+operations = reduce(lambda a, b: a * b, (p[1] - p[0] for p in ranges)) - 1
+result = [i[0] for i in ranges]
 pos = len(ranges) - 1
-increments=0
+increments = 0
 permutations.append(list(result))
 while increments < operations:
-    if result[pos]==ranges[pos][1]-1:
-        result[pos]=ranges[pos][0]
-        pos-=1
+    if result[pos] == ranges[pos][1] - 1:
+        result[pos] = ranges[pos][0]
+        pos -= 1
     else:
-        result[pos]+=1
-        increments+=1
-        pos=len(ranges)-1 #increment the innermost loop
+        result[pos] += 1
+        increments += 1
+        pos = len(ranges) - 1  # increment the innermost loop
         permutations.append(list(result))
 
-for pack in range(1,packs_in_box + 1):
-    dist = multivariate_hypergeom(m=maxgoal, n=pack*3)
+for pack in range(1, packs_in_box + 1):
+    dist = multivariate_hypergeom(m=maxgoal, n=pack * 3)
     totalprob = 0.0
     for case in permutations:
         case.append(pack * 3 - sum(case))
         totalprob += dist.pmf(x=case)
         case.pop()
-    pdf.append(totalprob)
+    cdf.append(totalprob)
 
-pmf = [float(0)] + [pdf[i] - pdf[i-1] for i in range(1,len(pdf))]
-
+pmf = [float(0)] + [cdf[i] - cdf[i - 1] for i in range(1, len(cdf))]
 
 # theoreticalcdf = []
 # theoreticalpmf = []
@@ -327,7 +391,7 @@ hist, bins, patches = ax[0].hist(trials, bins=range(1, packs_in_box + 2), densit
 cumulative, bins2, patches2 = ax[1].hist(trials, bins=bins,
                                          cumulative=True, density=True, histtype='step',
                                          label='Simulated')
-ax[1].plot(bins[:-1], pdf, 'k--', label='Theoretical')
+ax[1].plot(bins[:-1], cdf, 'k--', label='Theoretical')
 ax[0].plot(bins[:-1], pmf, 'k--', label='Theoretical')
 ax[1].add_artist(lines.Line2D([0, 180], [0.5, 0.5], c='red'))
 ax[1].legend(loc='lower right')
