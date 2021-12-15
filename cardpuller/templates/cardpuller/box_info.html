@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Duel Links Bulk Pack Simulator</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"></script>
+  </head>
+  <body>
+    <div class="text-center">
+      <form id="form-container" method="POST" class="container pt-5">
+        {% csrf_token %} {{ box_form.as_p}} {{card_formset.management_form}}
+        <ul class="list-group list-group-horizontal">
+          {% for form in card_formset %}
+          <div class="card-form">
+            <li class="list-group-item list-group-item-flush">
+            
+              <div class="fieldWrapper">
+                {% if form.rarity.errors %}
+                  {% for error in form.rarity.errors %}
+                <div class="text-danger">
+                  <p>{{ error }}</p>
+                </div>
+                  {% endfor %}
+                {% endif %} {{form.rarity.label_tag}} {{form.rarity}}
+                <button type="button" class="btn btn-danger remove-btn btn-sm" onclick="deleteCard(this)"><span class="glyphicon glyphicon-minus"></span></button>
+              </div>
+
+              <div class="fieldWrapper">
+                {% if form.copies.errors %}
+                  {% for error in form.copies.errors %}
+                <div class="text-danger">
+                  <p>{{ error }}</p>
+                </div>
+                  {% endfor %}
+                {% endif %} {{form.copies.label_tag}} {{form.copies}}
+              </div>
+
+              <div class="fieldWrapper">
+                {% if form.extra.errors %}
+                  {% for error in form.extra.errors %}
+                <div class="text-danger">
+                  <p>{{ error }}</p>
+                </div>
+                  {% endfor %}
+                {% endif %} {{form.extra.label_tag}} {{form.extra}}
+              </div>
+              </li>
+              </div>
+          {% endfor %}
+          <span id="insertion_point"></span>
+        </ul>
+        <button id="add-form" type="button" class="btn btn-secondary">Add Another Card</button>
+        <button type="submit" class="btn btn-primary">Simulate</button>
+      </form>
+    </div>
+
+    <script>
+      let cardForm = document.querySelectorAll(".card-form");
+      let container = document.querySelector("#form-container");
+      let addButton = document.querySelector("#add-form");
+      let totalForms = document.querySelector("#id_form-TOTAL_FORMS");
+      let placeholder = document.querySelector("#insertion_point");
+      let formRegex = RegExp(`form-(\\d){1}-`, "g"); //Regex to find all instances of the form number
+
+      let formNum = cardForm.length - 1; //Get the number of the last form on the page with zero-based indexing
+      addButton.addEventListener("click", addForm);
+
+      function addForm(e) {
+        e.preventDefault();
+
+        let newForm = cardForm[0].cloneNode(true); //Clone the card form
+
+        formNum++; //Increment the form number
+        newForm.innerHTML = newForm.innerHTML.replace(formRegex, `form-${formNum}-`); //Update the new form to have the correct form number
+        placeholder.parentNode.insertBefore(newForm, placeholder); //Insert the new form at the end of the list of forms
+
+        totalForms.setAttribute("value", `${formNum + 1}`); //Increment the number of total forms in the form management
+      }
+      function deleteCard(id) {
+        if (formNum) {
+          let toBeDeleted = id.closest('.card-form');
+          let cardForm = document.querySelectorAll('.card-form'); // update this selector since we don't know how many forms are currently in the formset
+          let index;
+          const values = [];
+          for (let i = 0; i < totalForms.value; i++) {
+            if (cardForm[i] == toBeDeleted) {
+              index = i;
+            } else { //record currently inputted values of the cards we are not deleting
+              values.push(
+                [document.getElementById(`id_form-${i}-rarity`).value,
+                document.getElementById(`id_form-${i}-copies`).value,
+                document.getElementById(`id_form-${i}-extra`).checked,
+            ]);
+            }
+          }
+          console.log(values);
+          toBeDeleted.remove();
+          formNum--;
+          totalForms.setAttribute('value', `${formNum + 1}`);
+          correctIndices(values);
+        }
+      }
+      function correctIndices(valueArray) {
+        let cardForm = document.querySelectorAll('.card-form'); // update this selector since we don't know how many forms are currently in the formset
+        for (let i = 0; i < totalForms.value; i++) {
+          cardForm[i].innerHTML = cardForm[i].innerHTML.replace(formRegex, `form-${i}-`);
+          document.getElementById(`id_form-${i}-rarity`).value = valueArray[i][0]
+          document.getElementById(`id_form-${i}-copies`).value = valueArray[i][1]
+          document.getElementById(`id_form-${i}-extra`).checked = valueArray[i][2]
+        }
+      }
+    </script>
+  </body>
+</html>
