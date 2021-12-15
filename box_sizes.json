@@ -1,0 +1,46 @@
+{
+  "80": {
+    "packs_total": 80,
+    "UR_distinct": 2,
+    "UR_total": 2,
+    "SR_distinct": 8,
+    "SR_total": 8,
+    "R_distinct": 14,
+    "R_total": 70,
+    "N_distinct": 16,
+    "N_total": 160
+  },
+  "100": {
+    "packs_total": 100,
+    "UR_distinct": 3,
+    "UR_total": 3,
+    "SR_distinct": 10,
+    "SR_total": 10,
+    "R_distinct": 17,
+    "R_total": 102,
+    "N_distinct": 20,
+    "N_total": 185
+  },
+  "180": {
+    "packs_total": 180,
+    "UR_distinct": 9,
+    "UR_total": 9,
+    "SR_distinct": 11,
+    "SR_total": 22,
+    "R_distinct": 28,
+    "R_total": 168,
+    "N_distinct": 42,
+    "N_total": 341
+  },
+  "200": {
+    "packs_total": 200,
+    "UR_distinct": 10,
+    "UR_total": 10,
+    "SR_distinct": 12,
+    "SR_total": 24,
+    "R_distinct": 32,
+    "R_total": 192,
+    "N_distinct": 46,
+    "N_total": 374
+  }
+}
