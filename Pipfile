@@ -8,6 +8,8 @@ django = "*"
 django-environ = "*"
 matplotlib = "*"
 scipy = "*"
+django-heroku = "*"
+gunicorn = "*"
 
 [dev-packages]
 
