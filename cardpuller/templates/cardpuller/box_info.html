@@ -14,7 +14,7 @@
     <div class="text-center">
       <form id="form-container" method="POST" class="container pt-5">
         {% csrf_token %} {{ box_form.as_p}} {{card_formset.management_form}}
-        <ul class="list-group list-group-horizontal">
+        <ul class="list-group list-group-item-flush">
           {% for form in card_formset %}
           <div class="card-form">
             <li class="list-group-item list-group-item-flush">

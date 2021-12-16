@@ -10,6 +10,8 @@ matplotlib = "*"
 scipy = "*"
 django-heroku = "*"
 gunicorn = "*"
+dj-database-url = "*"
+psycopg2-binary = "*"
 
 [dev-packages]
 
