@@ -16,12 +16,12 @@
     <div class="text-center">
       <form id="form-container" method="POST" class="container pt-5">
         {% csrf_token %} {{ box_form.as_p}} {{card_formset.management_form}}
-        <ul class="list-group list-group-item-flush">
+        <ul class="list-group list-group-horizontal d-flex flex-wrap justify-content-center">
           {% for form in card_formset %}
           <div class="card-form">
             <li class="list-group-item list-group-item-flush">
             
-              <div class="fieldWrapper">
+              <div class="rarityWrapper">
                 {% if form.rarity.errors %}
                   {% for error in form.rarity.errors %}
                 <div class="text-danger">
@@ -29,10 +29,10 @@
                 </div>
                   {% endfor %}
                 {% endif %} {{form.rarity.label_tag}} {{form.rarity}}
-                <button type="button" class="btn btn-danger remove-btn btn-sm" onclick="deleteCard(this)"><span class="glyphicon glyphicon-minus"></span></button>
+                <button type="button" class="btn-close float-end" onclick="deleteCard(this)"></button>
               </div>
 
-              <div class="fieldWrapper">
+              <div class="copiesWrapper">
                 {% if form.copies.errors %}
                   {% for error in form.copies.errors %}
                 <div class="text-danger">
@@ -42,7 +42,7 @@
                 {% endif %} {{form.copies.label_tag}} {{form.copies}}
               </div>
 
-              <div class="fieldWrapper">
+              <div class="extraWrapper">
                 {% if form.extra.errors %}
                   {% for error in form.extra.errors %}
                 <div class="text-danger">
