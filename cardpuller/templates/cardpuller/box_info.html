@@ -14,7 +14,7 @@
   </head>
   <body>
     <div class="text-center">
-      <form id="form-container" method="POST" class="container pt-5">
+      <form id="form-container" method="POST" class="container pt-5" onsubmit="submitButton()">
         {% csrf_token %} {{ box_form.as_p}} {{card_formset.management_form}}
         <ul class="list-group list-group-horizontal d-flex flex-wrap justify-content-center">
           {% for form in card_formset %}
@@ -57,7 +57,7 @@
           <span id="insertion_point"></span>
         </ul>
         <button id="add-form" type="button" class="btn btn-secondary">Add Another Card</button>
-        <button type="submit" class="btn btn-primary">Simulate</button>
+        <button type="submit" id="submit" class="btn btn-primary">Simulate</button>
       </form>
     </div>
 
@@ -72,6 +72,11 @@
       let formNum = cardForm.length - 1; //Get the number of the last form on the page with zero-based indexing
       addButton.addEventListener("click", addForm);
 
+      function submitButton() {
+        let button = document.querySelector("#submit");
+        button.setAttribute("disabled", "");
+        button.innerHTML = '<span class="spinner-grow spinner-grow-sm"></span> Simulating';
+      }
       function addForm(e) {
         e.preventDefault();
 
