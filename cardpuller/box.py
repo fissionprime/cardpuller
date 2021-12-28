@@ -10,8 +10,8 @@ from scipy.stats import multivariate_hypergeom
 from functools import reduce
 
 # info on desired cards
-targets = [{'rarity': 'R', 'copies': 1}]#, {'rarity': 'SR', 'copies': 1},
-           #{'rarity': 'UR', 'copies': 1}, {'rarity': 'N', 'copies': 3, 'extra': True}]
+targets = [{'rarity': 'R', 'copies': 1}, {'rarity': 'SR', 'copies': 1},
+           {'rarity': 'UR', 'copies': 1}, {'rarity': 'N', 'copies': 3, 'extra': True}]
 # desired_rarity = 'SR'
 # desired_copies = 2
 # does the desired card have extra copies in the box?
@@ -23,6 +23,8 @@ numtrials = 1000
 
 # some info about the box contents
 packs_in_box = 180
+from numpy.random import default_rng
+rng = default_rng(123)
 
 
 class card:
@@ -50,6 +52,8 @@ class box:
         self.third_pack_rares = self.template['R_total'] - self.double_rares
 
     def populate(self):
+        if self.packs == 0:
+            return
         self.card_dict = {
             i: {} for i in self.rarities
         }
@@ -271,24 +275,44 @@ class box:
                         file.write(str(pack) + "\n")
         return opened
 
-    def multivariate_probs(self, targets):
+    def pull_for_cards2(self, targets):
+        box_log = {
+            i: {} for i in self.rarities
+        }
+        for i, pack in enumerate(self.pack_list):
+            for card in pack:
+                if box_log[card['rarity']].get(card['index'], False):
+                    box_log[card['rarity']][card['index']].append(i + 1)
+                else:
+                    box_log[card['rarity']][card['index']] = [i + 1]
+        self.box_log = box_log
+        most_packs = 1
+        for card in targets:
+            packs_for_this_card = box_log[card['rarity']][card['index']][card['copies'] - 1]
+            if packs_for_this_card > most_packs: most_packs = packs_for_this_card
+        return most_packs
+
+
+    def hypergeom_probs(self, targets):
         mingoal = []
-        maxgoal = []
+        copies_in_box = []
         for card in targets:
             mingoal.append(card['copies'])
             if card.get('extra', False):
-                maxgoal.append(math.ceil(self.boxstats[1][self.rarities.index(card['rarity'])]
+                copies_in_box.append(math.ceil(self.boxstats[1][self.rarities.index(card['rarity'])]
                                          / self.boxstats[0][self.rarities.index(card['rarity'])]))
             else:
-                maxgoal.append(math.floor(self.boxstats[1][self.rarities.index(card['rarity'])]
+                copies_in_box.append(math.floor(self.boxstats[1][self.rarities.index(card['rarity'])]
                                           / self.boxstats[0][self.rarities.index(card['rarity'])]))
-        othercards = (self.template['packs_total'] * 3) - sum(maxgoal)
-        maxgoal.append(othercards)
+        othercards = (self.template['packs_total'] * 3) - sum(copies_in_box)
+        copies_in_box.append(othercards)
         
         cdf = []
         permutations = []
+        means_by_pack = []
+        variance_by_pack = []
         # here we calculate all the permutations in which we have found our target cards in desired quantities
-        ranges = [[mingoal[i], maxgoal[i] + 1] for i in range(len(mingoal))]
+        ranges = [[mingoal[i], copies_in_box[i] + 1] for i in range(len(mingoal))]
         operations = reduce(lambda a, b: a * b, (p[1] - p[0] for p in ranges)) - 1
         result = [i[0] for i in ranges]
         pos = len(ranges) - 1
@@ -305,16 +329,18 @@ class box:
                 permutations.append(list(result))
         
         for pack in range(1, self.template['packs_total'] + 1):
-            dist = multivariate_hypergeom(m=maxgoal, n=pack * 3)
+            dist = multivariate_hypergeom(m=copies_in_box, n=pack * 3)
             totalprob = 0.0
             for case in permutations:
                 case.append(pack * 3 - sum(case))
                 totalprob += dist.pmf(x=case)
                 case.pop()
             cdf.append(totalprob)
-        
-        pmf = [float(0)] + [cdf[i] - cdf[i - 1] for i in range(1, len(cdf))]
-        return pmf, cdf
+            means_by_pack.append(dist.mean()[:-1])
+            variance_by_pack.append(dist.var()[:-1])
+
+        pmf = [cdf[0]] + [cdf[i] - cdf[i - 1] for i in range(1, len(cdf))]
+        return pmf, cdf, np.asarray(means_by_pack), np.asarray(variance_by_pack)
 
 
 

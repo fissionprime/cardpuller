@@ -34,19 +34,20 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", default=False)
 
-ALLOWED_HOSTS = ['192.168.1.112', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = []
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    "cardpuller.apps.CardpullerConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "cardpuller.apps.CardpullerConfig",
+    "widget_tweaks",
 ]
 
 MIDDLEWARE = [
@@ -85,7 +86,7 @@ WSGI_APPLICATION = "duellinks.wsgi.application"
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
 DATABASES = {}
-DATABASES['default'] = dj_database_url.config(conn_max_age=600)
+DATABASES["default"] = dj_database_url.config(conn_max_age=600)
 
 
 # Password validation
@@ -137,5 +138,5 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Activate Django-Heroku.
 django_heroku.settings(locals())
 
-options = DATABASES['default'].get('OPTIONS', {})
-options.pop('sslmode', None)
+options = DATABASES["default"].get("OPTIONS", {})
+options.pop("sslmode", None)

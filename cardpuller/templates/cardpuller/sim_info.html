@@ -22,7 +22,10 @@
       <li>{{ target }}</li>
       {% endfor %}
     </ul>
-    <img src="data:image/png;base64,{{chart}}" class="img-fluid" />
+    {% autoescape off %}
+    {{chart1}}
+    {{chart2}}
+    {% endautoescape %}
     <p>
       <a href="{% url 'box_info' %}">Run Another Simulation</a>
     </p>
