@@ -1,162 +1,137 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <title>Duel Links Bulk Pack Simulator</title>
-    <link rel="shortcut icon" type="image/png" href="{% static 'favicon.ico' %}" />
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-    <link
-      rel="stylesheet"
-      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css"
-    />
-  </head>
-  <body>
-    {% load widget_tweaks %}
-    <div class="text-center">
-      <form id="form-container" method="POST" class="container pt-5" onsubmit="submitButton()">
-        {% csrf_token %} {{ box_form.as_p}} {{card_formset.management_form}}
-        <ul class="list-group list-group-horizontal d-flex flex-wrap justify-content-center">
-          {% for form in card_formset %}
-          <div class="card-form">
-            <li class="list-group-item list-group-item-flush">
-              <div class="rarityWrapper">
-                {% if form.rarity.errors %} {% for error in form.rarity.errors %}
-                <div class="text-danger">
-                  <p>{{ error }}</p>
-                </div>
-                {% endfor %} {% endif %} {{form.rarity.label_tag}} {{form.rarity|add_error_class:'border-danger'}}
-                <button
-                  type="button"
-                  class="btn-close float-end"
-                  onclick="deleteCard(this)"
-                ></button>
-              </div>
-
-              <div class="copiesWrapper">
-                {% if form.copies.errors %} {% for error in form.copies.errors %}
-                <div class="text-danger">
-                  <p>{{ error }}</p>
-                </div>
-                {% endfor %} {% endif %} {{form.copies.label_tag}} {{form.copies}}
-              </div>
-
-              <div class="extraWrapper">
-                {% if form.extra.errors %} {% for error in form.extra.errors %}
-                <div class="text-danger">
-                  <p>{{ error }}</p>
-                </div>
-                {% endfor %} {% endif %} {% if form.rarity.value == 'N' %}<span class="extra"
-                  >{{form.extra.label_tag}} {{form.extra}}</span
-                >
-                {% else %}<span hidden class="extra">{{form.extra.label_tag}} {{form.extra}}</span
-                >{% endif %}
-              </div>
-            </li>
+{% extends "cardpuller/base.html" %} {% load widget_tweaks %} {% load static %} {% block content %}
+<div class="text-center">
+  <form id="form-container" method="POST" class="container pt-5" onsubmit="submitButton()">
+    {% csrf_token %} {{ box_form.as_p}} {{card_formset.management_form}}
+    <ul class="list-group list-group-horizontal d-flex flex-wrap justify-content-around">
+      {% for form in card_formset %}
+      <div class="card-form mt-2">
+        <li class="list-group-item list-group-item-flush">
+          <div class="rarityWrapper">
+            {% if form.rarity.errors %} {% for error in form.rarity.errors %}
+            <div class="text-danger">
+              <p>{{ error }}</p>
+            </div>
+            {% endfor %} {% endif %} {{form.rarity.label_tag}}
+            {{form.rarity|add_error_class:'border-danger'}}
+            <button type="button" class="btn-close float-end" onclick="deleteCard(this)"></button>
           </div>
-          {% endfor %}
-          <span id="insertion_point"></span>
-        </ul>
-        <button id="add-form" type="button" class="btn btn-secondary">Add Another Card</button>
-        <button type="submit" id="submit" class="btn btn-primary">Simulate</button>
-      </form>
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script>
-      let cardForm = document.querySelectorAll(".card-form");
-      let container = document.querySelector("#form-container");
-      let addButton = document.querySelector("#add-form");
-      let totalForms = document.querySelector("#id_form-TOTAL_FORMS");
-      let placeholder = document.querySelector("#insertion_point");
-      let formRegex = RegExp(`form-(\\d){1}-`, "g"); //Regex to find all instances of the form number
+          <div class="copiesWrapper">
+            {% if form.copies.errors %} {% for error in form.copies.errors %}
+            <div class="text-danger">
+              <p>{{ error }}</p>
+            </div>
+            {% endfor %} {% endif %} {{form.copies.label_tag}} {{form.copies}}
+          </div>
 
-      let formNum = cardForm.length - 1; //Get the number of the last form on the page with zero-based indexing
-      addButton.addEventListener("click", addForm);
+          <div class="extraWrapper">
+            {% if form.extra.errors %} {% for error in form.extra.errors %}
+            <div class="text-danger">
+              <p>{{ error }}</p>
+            </div>
+            {% endfor %} {% endif %} {% if form.rarity.value == 'N' %}<span class="extra"
+              >{{form.extra.label_tag}} {{form.extra}}</span
+            >
+            {% else %}<span hidden class="extra">{{form.extra.label_tag}} {{form.extra}}</span>
+            {% endif %}
+          </div>
+        </li>
+      </div>
+      {% endfor %}
+    </ul>
+    <button id="add-form" type="button" class="btn btn-secondary mt-1">Add Another Card</button>
+    <button type="submit" id="submit" class="btn btn-primary mt-1">Simulate</button>
+  </form>
+</div>
 
-      for (let card of cardForm) {
-        // listen for changes in the rarity of any card so we can properly display the "extra" fields (or not)
-        let rarityField = card
-          .getElementsByClassName("rarityWrapper")[0]
-          .getElementsByTagName("select")[0];
-        rarityField.addEventListener("change", function() { checkRarityValue(rarityField); });
-      }
+<script>
+  let cardForm = document.querySelectorAll(".card-form");
+  let container = document.querySelector("#form-container");
+  let addButton = document.querySelector("#add-form");
+  let totalForms = document.querySelector("#id_form-TOTAL_FORMS");
+  let formRegex = RegExp(`form-(\\d){1}-`, "g"); //Regex to find all instances of the form number
 
-      function checkRarityValue(rarityField) {
-        let cardNode = rarityField.closest(".card-form");
-        let fieldParent = cardNode.querySelector(".extra");
-        if (rarityField.value == "N") {
-          fieldParent.removeAttribute("hidden");
+  let formNum = cardForm.length - 1; //Get the number of the last form on the page with zero-based indexing
+  addButton.addEventListener("click", addForm);
+
+  for (let card of cardForm) {
+    // listen for changes in the rarity of any card so we can properly display the "extra" fields (or not)
+    let rarityField = card
+      .getElementsByClassName("rarityWrapper")[0]
+      .getElementsByTagName("select")[0];
+    rarityField.setAttribute("onchange", "checkRarityValue(this)");
+  }
+
+  function checkRarityValue(rarityField) {
+    let cardNode = rarityField.closest(".card-form");
+    let fieldParent = cardNode.querySelector(".extra");
+    if (rarityField.value == "N") {
+      fieldParent.removeAttribute("hidden");
+    } else {
+      fieldParent.setAttribute("hidden", "true");
+    }
+  }
+  function submitButton() {
+    let button = document.querySelector("#submit");
+    button.setAttribute("disabled", "");
+    button.innerHTML = '<span class="spinner-grow spinner-grow-sm"></span> Simulating';
+  }
+  function addForm(e) {
+    e.preventDefault();
+
+    let newForm = cardForm[0].cloneNode(true); //Clone the card form
+    let options = newForm.getElementsByTagName("option");
+    for (let i = 0; i < options.length; i++) {
+      options[i].removeAttribute("selected");
+    }
+    let fields = newForm.getElementsByTagName("input");
+    for (let i = 0; i < fields.length; i++) {
+      // reset any non-default values
+      fields[i].removeAttribute("checked");
+      fields[i].removeAttribute("value");
+    }
+
+    formNum++; //Increment the form number
+    newForm.innerHTML = newForm.innerHTML.replace(formRegex, `form-${formNum}-`); //Update the new form to have the correct form number
+    newForm.querySelector(".extra").setAttribute("hidden", "true"); // hide the "extra" field by default since the default rarity is 'UR'
+    cardForm[0].parentNode.appendChild(newForm); //Insert the new form at the end of the list of forms
+
+    totalForms.setAttribute("value", `${formNum + 1}`); //Increment the number of total forms in the form management
+  }
+  function deleteCard(id) {
+    if (formNum) {
+      let toBeDeleted = id.closest(".card-form");
+      let cardForm = document.querySelectorAll(".card-form"); // update this selector since we don't know how many forms are currently in the formset
+      let index;
+      const values = [];
+      for (let i = 0; i < totalForms.value; i++) {
+        if (cardForm[i].isSameNode(toBeDeleted)) {
+          index = i;
         } else {
-          fieldParent.setAttribute("hidden", "true");
+          //record currently inputted values of the cards we are not deleting
+          values.push([
+            document.getElementById(`id_form-${i}-rarity`).value,
+            document.getElementById(`id_form-${i}-copies`).value,
+            document.getElementById(`id_form-${i}-extra`).checked,
+          ]);
         }
       }
-      function submitButton() {
-        let button = document.querySelector("#submit");
-        button.setAttribute("disabled", "");
-        button.innerHTML = '<span class="spinner-grow spinner-grow-sm"></span> Simulating';
-      }
-      function addForm(e) {
-        e.preventDefault();
-
-        let newForm = cardForm[0].cloneNode(true); //Clone the card form
-        let options = newForm.getElementsByTagName("option");
-        for (let i = 0; i < options.length; i++) {
-          options[i].removeAttribute("selected");
-        }
-        let fields = newForm.getElementsByTagName("input");
-        for (let i = 0; i < fields.length; i++) {
-          // reset any non-default values
-          fields[i].removeAttribute("checked");
-          fields[i].removeAttribute("value");
-        }
-
-        formNum++; //Increment the form number
-        newForm.innerHTML = newForm.innerHTML.replace(formRegex, `form-${formNum}-`); //Update the new form to have the correct form number
-        newForm.querySelector(".extra").setAttribute("hidden", "true"); // hide the "extra" field by default since the default rarity is 'UR'
-        placeholder.parentNode.insertBefore(newForm, placeholder); //Insert the new form at the end of the list of forms
-
-        totalForms.setAttribute("value", `${formNum + 1}`); //Increment the number of total forms in the form management
-      }
-      function deleteCard(id) {
-        if (formNum) {
-          let toBeDeleted = id.closest(".card-form");
-          let cardForm = document.querySelectorAll(".card-form"); // update this selector since we don't know how many forms are currently in the formset
-          let index;
-          const values = [];
-          for (let i = 0; i < totalForms.value; i++) {
-            if (cardForm[i].isSameNode(toBeDeleted)) {
-              index = i;
-            } else {
-              //record currently inputted values of the cards we are not deleting
-              values.push([
-                document.getElementById(`id_form-${i}-rarity`).value,
-                document.getElementById(`id_form-${i}-copies`).value,
-                document.getElementById(`id_form-${i}-extra`).checked,
-              ]);
-            }
-          }
-          toBeDeleted.remove();
-          formNum--;
-          totalForms.setAttribute("value", `${formNum + 1}`);
-          correctIndices(values);
-        }
-      }
-      function correctIndices(valueArray) {
-        let cardForm = document.querySelectorAll(".card-form"); // update this selector since we don't know how many forms are currently in the formset
-        let i = 0;
-        for (let card of cardForm) {
-          card.innerHTML = card.innerHTML.replace(formRegex, `form-${i}-`);
-          document.getElementById(`id_form-${i}-rarity`).value = valueArray[i][0];
-          document.getElementById(`id_form-${i}-copies`).value = valueArray[i][1];
-          document.getElementById(`id_form-${i}-extra`).checked = valueArray[i][2];
-          i++;
-        }
-      }
-    </script>
-  </body>
-</html>
+      toBeDeleted.remove();
+      formNum--;
+      totalForms.setAttribute("value", `${formNum + 1}`);
+      correctIndices(values);
+    }
+  }
+  function correctIndices(valueArray) {
+    let cardForm = document.querySelectorAll(".card-form"); // update this selector since we don't know how many forms are currently in the formset
+    let i = 0;
+    for (let card of cardForm) {
+      card.innerHTML = card.innerHTML.replace(formRegex, `form-${i}-`);
+      document.getElementById(`id_form-${i}-rarity`).value = valueArray[i][0];
+      document.getElementById(`id_form-${i}-copies`).value = valueArray[i][1];
+      document.getElementById(`id_form-${i}-extra`).checked = valueArray[i][2];
+      i++;
+    }
+  }
+</script>
+{% endblock %}

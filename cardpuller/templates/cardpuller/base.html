@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  {% load static %}
+  <head>
+    {% block charset %}
+    <meta charset="UTF-8" />
+    {% endblock %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Duel Links Bulk Pack Simulator{% endblock %}</title>
+    {% block icon %}
+    <link
+      rel="shortcut icon"
+      type="image/png"
+      href="{% static 'cardpuller/favicon.ico' %}"
+    />
+    {% endblock %} {% block bootstrap-css %}
+    <link
+      href="{% static 'cardpuller/light.min.css' %}"
+      rel="stylesheet"
+      id="current-theme"
+    />
+    {% endblock %}
+  </head>
+  <body>
+    <div id="navbar">
+      {% block navbar %}
+      <nav class="navbar navbar-expand-sm navbar-dark bg-primary">
+        <div class="container-fluid justify-content-end">
+          <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#collapsibleNavbar"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div
+            class="collapse navbar-collapse justify-content-end"
+            id="collapsibleNavbar"
+          >
+            <div class="form-check form-switch">
+              <input class="form-check-input theme-toggle" type="checkbox"/>
+              <label class="form-check-label text-light">Dark Mode</label>
+            </div>
+          </div>
+        </div>
+      </nav>
+      {% endblock %}
+    </div>
+    <div id="content">{% block content %}{% endblock %}</div>
+    {% block themechanger %}
+    <script>
+      let light_url = "{% static 'cardpuller/light.min.css' %}";
+      let dark_url = "{% static 'cardpuller/dark.min.css' %}";
+    </script>
+    <script src="{% static 'cardpuller/themechanger.js' %}"></script>
+    {% endblock %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
